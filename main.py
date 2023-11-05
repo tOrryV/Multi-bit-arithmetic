@@ -7,6 +7,8 @@ def parcer(obj, n):
 
 
 def convert_to_hex(num):
+    if num is None:
+        return '0'
     if num == [0]:
         return '0'
     i = len(num) - 1
@@ -49,10 +51,12 @@ def convert_from_hex(hex_num):
 num_1_A = str(input('Enter the first number: '))
 num_2_B = str(input('Enter the second number: '))
 # num_3_C = str(input('Enter the third number: '))
+num_Module = str(input('Enter the module: '))
 
 A = convert_from_hex(num_1_A)
 B = convert_from_hex(num_2_B)
 # C = convert_from_hex(num_3_C)
+Module = convert_from_hex(num_Module)
 
 
 '''Основні функції'''
@@ -74,6 +78,11 @@ def LongAddition(a, b):
 
 
 def LongSubstration(a, b):
+    '''if LongCompare(a, b) == -1:
+        result = LongSubstration(b, a)
+        result.insert(0, 1)
+        return result
+'''
     borrow = 0
     sub = []
     max_len = max(len(a), len(b))
@@ -90,6 +99,8 @@ def LongSubstration(a, b):
     if borrow != 0:
         return None
     else:
+        while len(sub) > 1 and sub[-1] == 0:
+            sub.pop()
         return sub
 
 
@@ -97,8 +108,7 @@ def LongMultiply(a, b):
     if LongCompare(a, b) == -1:
         return LongMultiply(b, a)
 
-    max_len = max(len(a), len(b))
-    mul = [0] * (len(a) + len(b))  # Ініціалізуємо результат з нулів
+    mul = [0] * (len(a) + len(b))
 
     for i in range(len(b)):
         carry = 0
@@ -107,11 +117,9 @@ def LongMultiply(a, b):
             mul[i + j] = temp & (2 ** 32 - 1)
             carry = temp >> 32
 
-        # Розширюємо список mul, якщо є переповнення
         if carry > 0:
             mul[i + len(a)] += carry
 
-    # Видаляємо зайві нулі з результату
     while len(mul) > 1 and mul[-1] == 0:
         mul.pop()
 
@@ -156,17 +164,6 @@ def LongPower(a, b):
 '''Додаткові функції'''
 
 
-def LongMultiplyOneDigit(a, k):
-    carry = 0
-    mul = []
-    for i in range(len(a)):
-        temp = int(a[i]) * k + carry
-        mul.append(temp & (2 ** 32 - 1))
-        carry = temp >> 32
-    mul.append(carry)
-    return mul
-
-
 def LongCompare(a, b):
     if a != [0]:
         while a[len(a) - 1] == 0:
@@ -197,25 +194,6 @@ def LongShiftDigitsToHigh(n, l):
     return n
 
 
-def LongShiftBitsToLow(n, amount):
-    if amount // 32 >= len(n):
-        return convert_from_hex('0')
-    if amount % 32 == 0:
-        return LongShiftDigitsToLow(n, amount // 32)
-    b = 32 - amount % 32
-    k = 0 if n[len(n) - 1] >> 32 - b != 0 else 1
-    result = [0] * (len(n) - k - amount // 32)
-    if k == 0:
-        result[len(n) - 1] = n[len(n) - 1] >> 32 - b
-        i = len(result) - 2
-    else:
-        i = len(result) - 1
-    for j in reversed(range(amount // 32 + 1, len(n))):
-        result[i] = (n[j] << b) & (2 ** 32 - 1) | n[j - 1] >> 32 - b
-        i -= 1
-    return result
-
-
 def LongShiftDigitsToLow(n, amount):
     if len(n) - amount <= 0:
         return [0]
@@ -244,6 +222,25 @@ def LongShiftBitsToHigh(n, amount):
     return result
 
 
+def LongShiftBitsToLow(n, amount):
+    if amount // 32 >= len(n):
+        return convert_from_hex('0')
+    if amount % 32 == 0:
+        return LongShiftDigitsToLow(n, amount//32)
+    b = 32 - amount % 32
+    k = 0 if n[len(n) - 1] >> 32 - b != 0 else 1
+    result = [0]*(len(n) - k - amount//32)
+    if k == 0:
+        result[len(n) - 1] = n[len(n) - 1] >> 32 - b
+        i = len(result) - 2
+    else:
+        i = len(result) - 1
+    for j in reversed(range(amount//32 + 1, len(n))):
+        result[i] = (n[j] << b) & (2**32 - 1) | n[j - 1] >> 32 - b
+        i -= 1
+    return result
+
+
 def BitCheck(a, i):
     c = i % 32
     j = i // 32
@@ -255,7 +252,95 @@ def BitLength(a):
     return result
 
 
-sum = convert_to_hex(LongAddition(A, B))
+'''Lab--2'''
+
+
+def GCD(a, b):
+    divisor = [1]
+    while a[0] % 2 == 0 and b[0] % 2 == 0:
+        a = LongShiftBitsToLow(a, 1)
+        b = LongShiftBitsToLow(b, 1)
+        divisor = LongShiftBitsToHigh(divisor, 1)
+    while a[0] % 2 == 0:
+        a = LongShiftBitsToLow(a, 1)
+    while LongCompare(b, convert_from_hex('0')) != 0:
+        while b[0] % 2 == 0:
+            b = LongShiftBitsToLow(b, 1)
+        compare = LongCompare(a, b)
+        if compare == 1:
+            min_ab = b
+            sub = LongSubstration(a, b)
+        elif compare == -1:
+            min_ab = a
+            sub = LongSubstration(b, a)
+        else:
+            min_ab = b
+            sub = [0]
+        a = min_ab
+        b = sub
+    divisor = LongMultiply(divisor, a)
+    return divisor
+
+
+def LCM(a, b):
+    gcd = GCD(a, b)
+    multiply = LongMultiply(a, b)
+    result = LongDivideModule(multiply, gcd)[0]
+    return result
+
+
+def BarrettReduction(a, mod=None):
+    if LongCompare(mod, a) == 1:
+        return a
+    k = BitLength(mod)
+    beta = LongPower([1], [2 * k])
+    mu = LongDivideModule(beta, mod)[0]
+    if len(a) <= k:
+        return a
+    q = LongDivideModule(a, LongShiftBitsToHigh([1], k-1))
+    q = LongMultiply(q, mu)
+    q = LongShiftBitsToLow(q, k + 1)
+    r = LongSubstration(a, LongMultiply(q, mod))
+    while LongCompare(r, mod) != -1:
+        r = LongSubstration(r, mod)
+    return r
+
+
+def LongAdititonModule(a, b, mod):
+    sum = LongAddition(a, b)
+    result = LongDivideModule(sum, mod)[1]
+    return result
+
+
+def LongSubstractionModule(a, b, mod):
+    if LongCompare(a, b) == -1:
+        sub = LongSubstration(b, a)
+    else:
+        sub = LongSubstration(a, b)
+    result = LongDivideModule(sub, mod)[1]
+    return result
+
+
+def LongMultiplyModule(a, b, mod):
+    mul = LongMultiply(a, b)
+    return BarrettReduction(mul, mod)
+
+
+def LongSquareMod(a, mod):
+    sq = LongMultiplyModule(a, a, mod)
+    return sq
+
+
+def LongModulePower(a, b, mod):
+    pow = [1]
+    for i in range(BitLength(b) - 1):
+        if BitCheck(b, i) == 1:
+            pow = BarrettReduction(LongMultiply(pow, a), mod)
+        a = BarrettReduction(LongMultiply(a, a), mod)
+    return pow
+
+
+'''sum = convert_to_hex(LongAddition(A, B))
 sub = convert_to_hex(LongSubstration(A, B))
 mul = convert_to_hex(LongMultiply(A, B))
 
@@ -266,12 +351,32 @@ div_mod = convert_to_hex(divide[1])
 square = convert_to_hex(LongSquare(A))
 #pow = convert_to_hex(LongPower(A, B))
 
-'''print('A^B = ' + convert_to_hex(LongPower(convert_from_hex(A2), convert_from_hex(B2))))'''
-
 print('The result of addition: ' + sum)
 print('The result of substraction: ' + sub)
 print('The result of multiplication: ' + mul)
 print('The result of dividing: ' + div)
 print('The result of reminder of dividing: ' + div_mod)
 print('The result of elevation to the square: ' + square)
-#print('The result of elevation: ' + pow)
+#print('The result of elevation: ' + pow)'''
+
+gcd = convert_to_hex(GCD(A, B))
+print('The result of finding gcd: ' + gcd)
+
+lcm = convert_to_hex(LCM(A, B))
+print('The result of finding lcm: ' + lcm)
+
+mod_sum = convert_to_hex(LongAdititonModule(A, B, Module))
+print('The result of (A+B)modModule: ' + mod_sum)
+
+mod_sub = convert_to_hex(LongSubstractionModule(A, B, Module))
+print('The result of (A-B)modModule: ' + mod_sub)
+
+mod_mul__ = convert_to_hex(LongMultiplyModule(A, B, Module))
+print('The result of (A*B)modModule: ' + mod_mul__)
+
+mod_sq = convert_to_hex(LongSquareMod(A, Module))
+print('The result of (A^2)modModule: ' + mod_sq)
+
+# mod_pow = convert_to_hex(LongModulePower(A, B, Module))
+# print('The result of (A^B)modModule: ' + mod_pow)
+

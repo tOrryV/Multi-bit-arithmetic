@@ -257,6 +257,8 @@ def BitLength(a):
 
 def GCD(a, b):
     divisor = [1]
+    compare = 0
+    col_vo_sub = 0
     while a[0] % 2 == 0 and b[0] % 2 == 0:
         a = LongShiftBitsToLow(a, 1)
         b = LongShiftBitsToLow(b, 1)
@@ -264,26 +266,55 @@ def GCD(a, b):
     while a[0] % 2 == 0:
         a = LongShiftBitsToLow(a, 1)
     while LongCompare(b, convert_from_hex('0')) != 0:
+        compare += 1
         while b[0] % 2 == 0:
             b = LongShiftBitsToLow(b, 1)
-        compare = LongCompare(a, b)
-        if compare == 1:
+        compare_of_number = LongCompare(a, b)
+        compare += 1
+        if compare_of_number == 1:
             min_ab = b
             sub = LongSubstration(a, b)
-        elif compare == -1:
+            col_vo_sub += 1
+        elif compare_of_number == -1:
             min_ab = a
             sub = LongSubstration(b, a)
+            col_vo_sub += 1
         else:
             min_ab = b
             sub = [0]
         a = min_ab
         b = sub
     divisor = LongMultiply(divisor, a)
-    return divisor
+    return divisor, compare, col_vo_sub
+
+# print('НСД(A, B) = ' + convert_to_hex(GCD(A, B)[0]) + '; кількість порівнянь = ' + str(GCD(A, B)[1]) + '; кількість віднімань = ' + str(GCD(A, B)[2]))
+
+
+def EvklidGCD(a, b):
+    compare = 0
+    div = 0
+    while LongCompare(a, [0]) != 0 and LongCompare(b, [0]) != 0:
+        compare_of_number = LongCompare(a, b)
+        compare += 3
+        if compare_of_number == 1:
+            a = LongDivideModule(a, b)[1]
+            div += 1
+        elif compare_of_number == -1:
+            b = LongDivideModule(b, a)[1]
+            div += 1
+        else:
+            b = [0]
+    res = LongAddition(a, b)
+    return res, compare, div
+
+
+# EvklidGCD(A, B)
+# print('НСД(A, B) за алгоритмом Евкліда = ' + convert_to_hex(EvklidGCD(A, B)[0]) + '; кількість порівнянь = ' + str(EvklidGCD(A, B)[1]) + '; кількість ділень = ' + str(EvklidGCD(A, B)[2]))
+
 
 
 def LCM(a, b):
-    gcd = GCD(a, b)
+    gcd = GCD(a, b)[0]
     multiply = LongMultiply(a, b)
     result = LongDivideModule(multiply, gcd)[0]
     return result
@@ -293,11 +324,11 @@ def BarrettReduction(a, mod=None):
     if LongCompare(mod, a) == 1:
         return a
     k = BitLength(mod)
-    beta = LongPower([1], [2 * k])
+    beta = LongShiftDigitsToHigh([1], 2 * k)
     mu = LongDivideModule(beta, mod)[0]
     if len(a) <= k:
         return a
-    q = LongDivideModule(a, LongShiftBitsToHigh([1], k-1))
+    q = LongDivideModule(a, LongShiftBitsToHigh([1], k-1))[0]
     q = LongMultiply(q, mu)
     q = LongShiftBitsToLow(q, k + 1)
     r = LongSubstration(a, LongMultiply(q, mod))
@@ -340,26 +371,26 @@ def LongModulePower(a, b, mod):
     return pow
 
 
-'''sum = convert_to_hex(LongAddition(A, B))
-sub = convert_to_hex(LongSubstration(A, B))
-mul = convert_to_hex(LongMultiply(A, B))
+# sum = convert_to_hex(LongAddition(A, B))
+# sub = convert_to_hex(LongSubstration(A, B))
+# mul = convert_to_hex(LongMultiply(A, B))
 
-divide = LongDivideModule(A, B)
-div = convert_to_hex(divide[0]) if divide[0] != [] else '0'
-div_mod = convert_to_hex(divide[1])
+# divide = LongDivideModule(A, B)
+# div = convert_to_hex(divide[0]) if divide[0] != [] else '0'
+# div_mod = convert_to_hex(divide[1])
 
-square = convert_to_hex(LongSquare(A))
+# square = convert_to_hex(LongSquare(A))
 #pow = convert_to_hex(LongPower(A, B))
 
-print('The result of addition: ' + sum)
-print('The result of substraction: ' + sub)
-print('The result of multiplication: ' + mul)
-print('The result of dividing: ' + div)
-print('The result of reminder of dividing: ' + div_mod)
-print('The result of elevation to the square: ' + square)
-#print('The result of elevation: ' + pow)'''
+# print('The result of addition: ' + sum)
+# print('The result of substraction: ' + sub)
+# print('The result of multiplication: ' + mul)
+# print('The result of dividing: ' + div)
+# print('The result of reminder of dividing: ' + div_mod)
+# print('The result of elevation to the square: ' + square)
+#print('The result of elevation: ' + pow)
 
-gcd = convert_to_hex(GCD(A, B))
+gcd = convert_to_hex(GCD(A, B)[0])
 print('The result of finding gcd: ' + gcd)
 
 lcm = convert_to_hex(LCM(A, B))
@@ -371,12 +402,23 @@ print('The result of (A+B)modModule: ' + mod_sum)
 mod_sub = convert_to_hex(LongSubstractionModule(A, B, Module))
 print('The result of (A-B)modModule: ' + mod_sub)
 
-mod_mul__ = convert_to_hex(LongMultiplyModule(A, B, Module))
-print('The result of (A*B)modModule: ' + mod_mul__)
+# mod_mul__ = convert_to_hex(LongMultiplyModule(A, B, Module))
+# print('The result of (A*B)modModule: ' + mod_mul__)
 
-mod_sq = convert_to_hex(LongSquareMod(A, Module))
-print('The result of (A^2)modModule: ' + mod_sq)
+# mod_sq = convert_to_hex(LongSquareMod(A, Module))
+# print('The result of (A^2)modModule: ' + mod_sq)
 
 # mod_pow = convert_to_hex(LongModulePower(A, B, Module))
 # print('The result of (A^B)modModule: ' + mod_pow)
 
+# print(LongCompare(LongMultiply(A, B), Module))
+
+
+# divide = LongDivideModule(A, B)
+# div = convert_to_hex(divide[0]) if divide[0] != [] else '0'
+# div_mod = convert_to_hex(divide[1])
+# print('The result of dividing: ' + div)
+# print('The result of reminder of dividing: ' + div_mod)
+
+# sub = convert_to_hex(LongSubstration(A, B))
+# print('The result of substraction: ' + sub)

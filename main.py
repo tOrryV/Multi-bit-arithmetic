@@ -127,22 +127,22 @@ def LongMultiply(a, b):
 
 
 def LongDivideModule(a, b):
+    if a == b:
+        return ([1], [0])
     k = BitLength(b)
-    remainder = a
-    div = []
+    remainder = a.copy()
+    quotient = [0]
     while LongCompare(remainder, b) != -1:
         t = BitLength(remainder)
         c = LongShiftBitsToHigh(b, t - k)
-        if LongCompare(remainder, c) == -1:
+        if LongCompare(remainder, c) < 0:
             t -= 1
-            while b[0] == 0:
-                b = b[1:]
-            c = LongShiftBitsToHigh(b, t - k)
+            length = t - k
+            c = LongShiftBitsToHigh(b, length)
         remainder = LongSubstration(remainder, c)
-        div = LongAddition(div, LongShiftBitsToHigh([1], t - k))
-        while b[0] == 0:
-            b = b[1:]
-    return [div, remainder]
+        temp = LongShiftBitsToHigh([1], t - k)
+        quotient = LongAddition(quotient, temp)
+    return (quotient, remainder)
 
 
 def LongSquare(a):
@@ -204,21 +204,22 @@ def LongShiftDigitsToLow(n, amount):
     return n
 
 
-def LongShiftBitsToHigh(n, amount):
-    if amount % 32 == 0:
-        return LongShiftDigitsToHigh(n, amount // 32)
-    b = 32 - amount % 32
-    k = 1 if n[len(n) - 1] >> b != 0 else 0
-    result = [0] * (len(n) + k + amount // 32)
-    if k == 1:
-        result[len(n) - 1] = n[len(n) - 1] >> b
-        i = len(result) - 2
-    else:
-        i = len(result) - 1
-    for j in reversed(range(1, len(n))):
-        result[i] = (n[j] << 32 - b) & (2 ** 32 - 1) | n[j - 1] >> b
-        i -= 1
-    result[i] = (n[0] << 32 - b) & (2 ** 32 - 1)
+def LongShiftBitsToHigh(number, width_shift):
+    if width_shift <= 0 or number == [0]:
+        return number.copy()
+    remainder = width_shift % 32
+    width_shift //= 32
+    result = LongShiftDigitsToHigh(number.copy(), width_shift)
+    if remainder > 0:
+        for i in range(remainder):
+            last_bit = (result[-1] >> 31) & 1
+            for j in range(len(result) - 1, 0, -1):
+                result[j] = ((result[j] << 1) ^ ((result[j - 1] >> 31) & 1)) & 0xFFFFFFFF
+            result[0] = (result[0] << 1) & 0xFFFFFFFF
+            if last_bit != 0:
+                result.append(last_bit)
+    while len(result) > 1 and result[-1] == 0:
+        result.pop()
     return result
 
 
@@ -226,17 +227,17 @@ def LongShiftBitsToLow(n, amount):
     if amount // 32 >= len(n):
         return convert_from_hex('0')
     if amount % 32 == 0:
-        return LongShiftDigitsToLow(n, amount//32)
+        return LongShiftDigitsToLow(n, amount // 32)
     b = 32 - amount % 32
     k = 0 if n[len(n) - 1] >> 32 - b != 0 else 1
-    result = [0]*(len(n) - k - amount//32)
+    result = [0] * (len(n) - k - amount // 32)
     if k == 0:
         result[len(n) - 1] = n[len(n) - 1] >> 32 - b
         i = len(result) - 2
     else:
         i = len(result) - 1
-    for j in reversed(range(amount//32 + 1, len(n))):
-        result[i] = (n[j] << b) & (2**32 - 1) | n[j - 1] >> 32 - b
+    for j in reversed(range(amount // 32 + 1, len(n))):
+        result[i] = (n[j] << b) & (2 ** 32 - 1) | n[j - 1] >> 32 - b
         i -= 1
     return result
 
@@ -320,16 +321,14 @@ def LCM(a, b):
     return result
 
 
-def BarrettReduction(a, mod=None):
+def BarrettReduction(a, mod, µ):
     if LongCompare(mod, a) == 1:
         return a
-    k = BitLength(mod)
-    beta = LongShiftDigitsToHigh([1], 2 * k)
-    mu = LongDivideModule(beta, mod)[0]
-    if len(a) <= k:
+    k = len(mod)
+    if len(a) <= len(mod):
         return a
     q = LongDivideModule(a, LongShiftBitsToHigh([1], k-1))[0]
-    q = LongMultiply(q, mu)
+    q = LongMultiply(q, µ)
     q = LongShiftBitsToLow(q, k + 1)
     r = LongSubstration(a, LongMultiply(q, mod))
     while LongCompare(r, mod) != -1:
@@ -345,6 +344,7 @@ def LongAdititonModule(a, b, mod):
 
 def LongSubstractionModule(a, b, mod):
     if LongCompare(a, b) == -1:
+        print("The second number is bigger! The result is B-A mod M")
         sub = LongSubstration(b, a)
     else:
         sub = LongSubstration(a, b)
@@ -354,7 +354,8 @@ def LongSubstractionModule(a, b, mod):
 
 def LongMultiplyModule(a, b, mod):
     mul = LongMultiply(a, b)
-    return BarrettReduction(mul, mod)
+    mul_mod = LongDivideModule(mul, mod)[1]
+    return mul_mod
 
 
 def LongSquareMod(a, mod):
@@ -364,10 +365,13 @@ def LongSquareMod(a, mod):
 
 def LongModulePower(a, b, mod):
     pow = [1]
-    for i in range(BitLength(b) - 1):
+    k = len(mod)
+    ß = LongShiftDigitsToHigh([1], 2 * k)
+    µ = LongDivideModule(ß, mod)[0]
+    for i in range(BitLength(b)):
         if BitCheck(b, i) == 1:
-            pow = BarrettReduction(LongMultiply(pow, a), mod)
-        a = BarrettReduction(LongMultiply(a, a), mod)
+            pow = BarrettReduction(LongMultiply(pow, a), mod, µ)
+        a = BarrettReduction(LongMultiply(a, a), mod, µ)
     return pow
 
 
@@ -402,11 +406,11 @@ print('The result of (A+B)modModule: ' + mod_sum)
 mod_sub = convert_to_hex(LongSubstractionModule(A, B, Module))
 print('The result of (A-B)modModule: ' + mod_sub)
 
-# mod_mul__ = convert_to_hex(LongMultiplyModule(A, B, Module))
-# print('The result of (A*B)modModule: ' + mod_mul__)
+mod_mul__ = convert_to_hex(LongMultiplyModule(A, B, Module))
+print('The result of (A*B)modModule: ' + mod_mul__)
 
-# mod_sq = convert_to_hex(LongSquareMod(A, Module))
-# print('The result of (A^2)modModule: ' + mod_sq)
+mod_sq = convert_to_hex(LongSquareMod(A, Module))
+print('The result of (A^2)modModule: ' + mod_sq)
 
 # mod_pow = convert_to_hex(LongModulePower(A, B, Module))
 # print('The result of (A^B)modModule: ' + mod_pow)
